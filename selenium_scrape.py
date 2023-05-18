@@ -7,6 +7,9 @@ from PIL import Image
 import io
 import base64
 
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 link = "https://verify.tra.go.tz/E215B4207332_093108"
 result = re.search(r'_(.*)$', link)
@@ -27,9 +30,6 @@ chrome_options.add_argument("--headless")  # Run Chrome in headless mode
 # Create a new instance of the Chrome driver with the configured options
 driver = webdriver.Chrome(executable_path=chromedriver_path, options=chrome_options)
 
-# Create a new instance of the Chrome driver
-# driver = webdriver.Chrome(executable_path=chromedriver_path)
-
 # Navigate to the current webpage
 driver.get(link)
 
@@ -37,17 +37,12 @@ driver.get(link)
 new_url = f'https://verify.tra.go.tz/Verify/Verified?Secret={formatted_text}'
 driver.execute_script(f'window.history.pushState(null, "", "{new_url}")')
 
-# Alternatively, you can use the following code to redirect to a new URL:
-# driver.execute_script(f'window.location.href = "{new_url}"')
-
 # Get the updated URL
 current_url = driver.current_url
-# print(driver.page_source)
 data = driver.page_source
-# data = requests.get(current_url)
-# print(data.text)
 soup = BeautifulSoup(data, 'html.parser')
-# print(soup)
+
+#Getting receipt data
 data_dict = {}
 for tr in soup.find_all('tr'):
     for th in tr.find_all('th'):
@@ -56,22 +51,20 @@ for tr in soup.find_all('tr'):
 
 print(data_dict)   
 
-# Capture full-page screenshot as base64
-screenshot_base64 = driver.get_screenshot_as_base64()
+# Wait for page to fully load
+wait = WebDriverWait(driver, 10)
+wait.until(EC.presence_of_element_located((By.TAG_NAME, 'body')))
 
-# Convert base64 screenshot to image
-screenshot_bytes = io.BytesIO(base64.b64decode(screenshot_base64))
-screenshot_image = Image.open(screenshot_bytes)
+# Get page dimensions
+page_width = driver.execute_script('return document.body.scrollWidth')
+page_height = driver.execute_script('return document.body.scrollHeight')
 
-# Save the screenshot image
-screenshot_image.save("screenshot.png")
+# Set window size to match the entire page
+driver.set_window_size(page_width, page_height)
 
-# screenshot = driver.get_screenshot_as_png()
-# image = Image.open(io.BytesIO(screenshot))
-# output_file = 'web_page_screenshot.png'  # Specify the desired output file name
-# image.save(output_file, 'PNG')
-  
-# print('Updated URL:', current_url)
+# Capture full-page screenshot
+screenshot_path = 'screenshot.png'
+driver.save_screenshot(screenshot_path)
 
 # Close the browser
 driver.quit()
